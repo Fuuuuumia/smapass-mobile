@@ -4,17 +4,15 @@ plugins {
 }
 
 android {
-    namespace = "com.fumibase.smapassmobile"
+    namespace = "com.groupe.smapassmobile"
     compileSdk {
-        version = release(36) {
-            minorApiLevel = 1
-        }
+        version = release(37)
     }
 
     defaultConfig {
         applicationId = "com.fumibase.smapassmobile"
         minSdk = 24
-        targetSdk = 36
+        targetSdk = 37
         versionCode = 1
         versionName = "1.0"
 

@@ -1,4 +1,4 @@
-package com.fumibase.smapassmobile
+package com.groupe.smapassmobile
 
 import org.junit.Test
 

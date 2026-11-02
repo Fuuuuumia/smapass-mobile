@@ -1,4 +1,4 @@
-package com.fumibase.smapassmobile
+package com.groupe.smapassmobile
 
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.ext.junit.runners.AndroidJUnit4

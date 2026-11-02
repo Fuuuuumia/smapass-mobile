@@ -1,4 +1,4 @@
-package com.fumibase.smapassmobile.ui.theme
+package com.groupe.smapassmobile.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
