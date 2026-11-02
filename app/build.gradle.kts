@@ -10,7 +10,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.fumibase.smapassmobile"
+        applicationId = "com.groupe.smapassmobile"
         minSdk = 24
         targetSdk = 37
         versionCode = 1
@@ -51,4 +51,6 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
+    implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.datastore.preferences)
 }
