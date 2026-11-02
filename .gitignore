@@ -1,0 +1,39 @@
+# Gradle
+.gradle/
+build/
+**/build/
+
+# ローカル設定
+local.properties
+
+# Android Studio / IntelliJ
+*.iml
+.idea/
+
+# ネイティブビルド（NDK / CMake）
+.externalNativeBuild/
+.cxx/
+
+# 生成されたファイル
+captures/
+*.apk
+*.aab
+*.ap_
+*.dex
+*.class
+output.json
+
+# キーストア
+*.jks
+*.keystore
+
+# Google サービス
+# google-services.json
+
+# Kotlin
+.kotlin/
+
+# ログ・OS生成ファイル
+*.log
+.DS_Store
+Thumbs.db
