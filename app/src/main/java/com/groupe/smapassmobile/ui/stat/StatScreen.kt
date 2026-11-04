@@ -1,5 +1,6 @@
 package com.groupe.smapassmobile.ui.stat
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -23,8 +25,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -36,75 +36,48 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 @Composable
 fun StatScreen(
     viewModel: StatScreenViewModel = viewModel(factory = StatScreenViewModel.Factory),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    StatContent(uiState = uiState, onRefresh = viewModel::refresh)
+
+    LifecycleResumeEffect(Unit) {
+        viewModel.startPolling()
+        onPauseOrDispose { viewModel.stopPolling() }
+    }
+
+    StatContent(uiState = uiState)
 }
 
-private val TABS = listOf("状態", "スペック")
+private val BOTTOM_TABS = listOf("状態", "スペック", "アカウント")
 
 @Composable
-private fun StatContent(
-    uiState: StatUiState,
-    onRefresh: () -> Unit,
-) {
+private fun StatContent(uiState: StatUiState) {
     var selectedTab by remember { mutableIntStateOf(0) }
     var infoText by remember { mutableStateOf<String?>(null) }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .statusBarsPadding(),
-    ) {
-        DeviceHeader(
-            spec = uiState.spec,
-            status = uiState.status,
-            onRefresh = onRefresh,
-            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 8.dp),
-        )
-
-        TabRow(selectedTabIndex = selectedTab) {
-            TABS.forEachIndexed { index, title ->
-                Tab(
-                    selected = selectedTab == index,
-                    onClick = { selectedTab = index },
-                    text = { Text(title) },
-                )
-            }
-        }
-
-        Column(
+    Column(modifier = Modifier.fillMaxSize()) {
+        Box(
             modifier = Modifier
                 .weight(1f)
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp),
+                .fillMaxWidth(),
         ) {
             when (selectedTab) {
-                0 -> StatusTab(
-                        status = uiState.status,
-                        isLoading = uiState.isLoading,
-                        onInfo = { infoText = it },
-                    )
-                else -> SpecTab(
-                            spec = uiState.spec,
-                            onInfo = { infoText = it }
-                    )
+                0 -> StatusPane(uiState = uiState, onInfo = { infoText = it })
+                1 -> SpecPane(uiState = uiState, onInfo = { infoText = it })
+                else -> AccountPane()
             }
-            Spacer(Modifier.padding(4.dp))
         }
+
+        StatBottomBar(selected = selectedTab, onSelect = { selectedTab = it })
     }
 
     infoText?.let { text ->
@@ -115,6 +88,112 @@ private fun StatContent(
             },
             text = { Text(text) },
         )
+    }
+}
+
+@Composable
+private fun StatusPane(
+    uiState: StatUiState,
+    onInfo: (String) -> Unit,
+) {
+    ScrollablePane {
+        DeviceHeader(spec = uiState.spec)
+        StatusTab(
+            status = uiState.status,
+            isLoading = uiState.isLoading,
+            onInfo = onInfo,
+        )
+    }
+}
+
+@Composable
+private fun SpecPane(
+    uiState: StatUiState,
+    onInfo: (String) -> Unit,
+) {
+    ScrollablePane {
+        DeviceHeader(spec = uiState.spec)
+        SpecTab(spec = uiState.spec, onInfo = onInfo)
+    }
+}
+
+@Composable
+private fun AccountPane() {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .statusBarsPadding()
+            .padding(16.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = "Account Tab",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+        )
+    }
+}
+
+@Composable
+private fun ScrollablePane(content: @Composable () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .statusBarsPadding()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp),
+    ) {
+        content()
+        Spacer(Modifier.padding(4.dp))
+    }
+}
+
+@Composable
+private fun StatBottomBar(
+    selected: Int,
+    onSelect: (Int) -> Unit,
+) {
+    Column(modifier = Modifier.background(MaterialTheme.colorScheme.surface)) {
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            BOTTOM_TABS.forEachIndexed { index, label ->
+                val isSelected = selected == index
+                // クリック領域・背景・リップルをすべて同じスタジアム形に揃える。
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(CircleShape)
+                        .background(
+                            if (isSelected) {
+                                MaterialTheme.colorScheme.primaryContainer
+                            } else {
+                                Color.Transparent
+                            },
+                        )
+                        .clickable { onSelect(index) }
+                        .padding(vertical = 10.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
+                        color = if (isSelected) {
+                            MaterialTheme.colorScheme.onPrimaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -148,14 +227,13 @@ private fun SpecTab(
         )
     }
     StatSection(title = "識別情報") {
-        MetricGrid(
-            listOf(
-                Metric(
-                    label = "IMEI",
-                    value = spec.imei ?: "取得不可",
-                ),
+        MetricTile(
+            metric = Metric(
+                label = "IMEI",
+                value = spec.imei ?: "取得不可",
             ),
             onInfo = onInfo,
+            modifier = Modifier.fillMaxWidth(),
         )
     }
 }
@@ -226,13 +304,8 @@ private fun StatusTab(
 }
 
 @Composable
-private fun DeviceHeader(
-    spec: DeviceSpec?,
-    status: DeviceStatus?,
-    onRefresh: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+private fun DeviceHeader(spec: DeviceSpec?) {
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Text(
             text = spec?.let { "${it.manufacturer} ${it.model}" } ?: "端末情報を取得中…",
             style = MaterialTheme.typography.headlineSmall,
@@ -244,18 +317,6 @@ private fun DeviceHeader(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = status?.let { "最終更新 ${formatTime(it.collectedAt)}" } ?: "",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            TextButton(onClick = onRefresh) { Text("更新") }
         }
     }
 }
@@ -376,6 +437,3 @@ private fun formatBytes(bytes: Long): String {
     val gb = bytes / 1024.0 / 1024.0 / 1024.0
     return if (gb >= 1.0) "%.1f GB".format(gb) else "%.0f MB".format(bytes / 1024.0 / 1024.0)
 }
-
-private fun formatTime(epochMillis: Long): String =
-    SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date(epochMillis))
