@@ -82,12 +82,10 @@ class StatScreenViewModel(
                 .copy(imei = savedImei)
             _uiState.update { it.copy(spec = spec) }
             repository.saveSpec(spec)
-
-            startPolling()
         }
     }
 
-    private fun startPolling() {
+    fun startPolling() {
         if (pollingJob?.isActive == true) return
         pollingJob = viewModelScope.launch {
             while (isActive) {
@@ -95,6 +93,10 @@ class StatScreenViewModel(
                 delay(POLL_INTERVAL_MS)
             }
         }
+    }
+    fun stopPolling() {
+        pollingJob?.cancel()
+        pollingJob = null
     }
 
     private suspend fun fetchStatus() {
@@ -104,12 +106,8 @@ class StatScreenViewModel(
         repository.saveStatus(status)
     }
 
-    fun refresh() {
-        viewModelScope.launch { fetchStatus() }
-    }
-
     companion object {
-        private const val POLL_INTERVAL_MS = 10_000L
+        private const val POLL_INTERVAL_MS = 5_000L
 
         val Factory = viewModelFactory {
             initializer {
