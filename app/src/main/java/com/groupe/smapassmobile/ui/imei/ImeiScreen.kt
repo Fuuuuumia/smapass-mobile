@@ -21,14 +21,14 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 
 @Composable
 fun ImeiScreen (
-    onSubmit: (String) -> Unit,
-    viewModel: ImeiScreenViewModel = viewModel(),
+    onSubmitted: () -> Unit,
+    viewModel: ImeiScreenViewModel = viewModel(factory = ImeiScreenViewModel.Factory),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     ImeiContent(
         uiState = uiState,
         onImeiChange = viewModel::onImeiChange,
-        onSubmit = { onSubmit(uiState.imei) },
+        onSubmit = { viewModel.save(onSubmitted) },
     )
 }
 

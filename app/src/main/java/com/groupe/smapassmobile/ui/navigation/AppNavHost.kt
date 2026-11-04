@@ -11,8 +11,8 @@ fun AppNavHost(startDestination: String){
     val navController = rememberNavController()
     NavHost(navController, startDestination = startDestination){
         composable("imei"){
-            ImeiScreen(onSubmit = {
-                imei -> navController.navigate("stat"){
+            ImeiScreen(onSubmitted = {
+                navController.navigate("stat"){
                     popUpTo("imei"){
                         inclusive = true
                     }

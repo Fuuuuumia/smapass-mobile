@@ -13,9 +13,11 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.first
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.groupe.smapassmobile.data.DeviceRepository
 
 @Serializable
 data class DeviceSpec(
@@ -53,7 +55,8 @@ data class StatUiState(
 )
 
 class StatScreenViewModel(
-    private val collector: DeviceInfoCollector
+    private val collector: DeviceInfoCollector,
+    private val repository: DeviceRepository,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(StatUiState())
     val uiState: StateFlow<StatUiState> = _uiState.asStateFlow()
@@ -63,10 +66,25 @@ class StatScreenViewModel(
 
     init {
         viewModelScope.launch {
+            val savedImei = repository.imei.first()
+            val cachedSpec = repository.spec.first()
+            val cachedStatus = repository.status.first()
+            lastCollectedAt = cachedStatus?.collectedAt ?: 0L
+            _uiState.update {
+                it.copy(
+                    spec = cachedSpec,
+                    status = cachedStatus,
+                    isLoading = cachedStatus == null,
+                )
+            }
+
             val spec = withContext(Dispatchers.IO) { collector.collectSpec() }
+                .copy(imei = savedImei)
             _uiState.update { it.copy(spec = spec) }
+            repository.saveSpec(spec)
+
+            startPolling()
         }
-        startPolling()
     }
 
     private fun startPolling() {
@@ -83,6 +101,7 @@ class StatScreenViewModel(
         val status = withContext(Dispatchers.IO) { collector.collectStatus(lastCollectedAt) }
         lastCollectedAt = status.collectedAt
         _uiState.update { it.copy(status = status, isLoading = false) }
+        repository.saveStatus(status)
     }
 
     fun refresh() {
@@ -95,7 +114,10 @@ class StatScreenViewModel(
         val Factory = viewModelFactory {
             initializer {
                 val app = this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY]!!
-                StatScreenViewModel(DeviceInfoCollector(app))
+                StatScreenViewModel(
+                    collector = DeviceInfoCollector(app),
+                    repository = DeviceRepository(app),
+                )
             }
         }
     }
