@@ -42,9 +42,11 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.groupe.smapassmobile.ui.settings.SettingsPane
 
 @Composable
 fun StatScreen(
+    onOpenMigration: () -> Unit,
     viewModel: StatScreenViewModel = viewModel(factory = StatScreenViewModel.Factory),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -54,13 +56,16 @@ fun StatScreen(
         onPauseOrDispose { viewModel.stopPolling() }
     }
 
-    StatContent(uiState = uiState)
+    StatContent(uiState = uiState, onOpenMigration = onOpenMigration)
 }
 
-private val BOTTOM_TABS = listOf("状態", "スペック", "アカウント")
+private val BOTTOM_TABS = listOf("状態", "スペック", "設定")
 
 @Composable
-private fun StatContent(uiState: StatUiState) {
+private fun StatContent(
+    uiState: StatUiState,
+    onOpenMigration: () -> Unit,
+) {
     var selectedTab by remember { mutableIntStateOf(0) }
     var infoText by remember { mutableStateOf<String?>(null) }
 
@@ -73,7 +78,7 @@ private fun StatContent(uiState: StatUiState) {
             when (selectedTab) {
                 0 -> StatusPane(uiState = uiState, onInfo = { infoText = it })
                 1 -> SpecPane(uiState = uiState, onInfo = { infoText = it })
-                else -> AccountPane()
+                else -> SettingsPane(onOpenMigration = onOpenMigration)
             }
         }
 
@@ -114,23 +119,6 @@ private fun SpecPane(
     ScrollablePane {
         DeviceHeader(spec = uiState.spec)
         SpecTab(spec = uiState.spec, onInfo = onInfo)
-    }
-}
-
-@Composable
-private fun AccountPane() {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .statusBarsPadding()
-            .padding(16.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = "Account Tab",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-        )
     }
 }
 
@@ -251,7 +239,7 @@ private fun StatusTab(
     StatSection(title = "発熱") {
         MetricGrid(
             listOf(
-                Metric("バッテリー温度", "%.1f℃".format(status.batteryTemperature)),
+                Metric("バッテリー温度", status.batteryTemperature?.let { "%.1f℃".format(it) } ?: "取得不可"),
                 Metric(
                     label = "熱的余裕",
                     value = status.thermalHeadroom?.let { "%.2f".format(it) } ?: "—",
@@ -285,7 +273,7 @@ private fun StatusTab(
                 Metric("累計起動回数", status.bootCount?.let { "$it 回" } ?: "取得不可"),
                 Metric(
                     label = "異常終了",
-                    value = if (status.hasAbnormalExit) "あり" else "なし",
+                    value = when (status.hasAbnormalExit) { true -> "あり"; false -> "なし"; null -> "取得不可" },
                     info = "クラッシュ・ANR・ネイティブクラッシュ・メモリ不足による終了の記録有無です。",
                 ),
             ),

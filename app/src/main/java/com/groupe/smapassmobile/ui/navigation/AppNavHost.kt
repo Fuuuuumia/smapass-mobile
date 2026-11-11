@@ -5,6 +5,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.groupe.smapassmobile.ui.imei.ImeiScreen
+import com.groupe.smapassmobile.ui.settings.MigrationScreen
 import com.groupe.smapassmobile.ui.stat.StatScreen
 @Composable
 fun AppNavHost(startDestination: String){
@@ -20,7 +21,12 @@ fun AppNavHost(startDestination: String){
             })
         }
         composable("stat"){
-            StatScreen()
+            StatScreen(
+                onOpenMigration = { navController.navigate("migration") },
+            )
+        }
+        composable("migration"){
+            MigrationScreen(onBack = { navController.popBackStack() })
         }
     }
 }

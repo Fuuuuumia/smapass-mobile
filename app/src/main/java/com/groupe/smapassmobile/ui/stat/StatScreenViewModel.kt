@@ -18,6 +18,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.groupe.smapassmobile.data.DeviceRepository
+import com.groupe.smapassmobile.data.MeasurementUploader
 
 @Serializable
 data class DeviceSpec(
@@ -38,13 +39,13 @@ data class DeviceSpec(
 data class DeviceStatus(
     val osVersion: String,
     val sdk: Int,
-    val batteryTemperature: Float,
+    val batteryTemperature: Float?,
     val batteryCycleCount: Int?,
     val remainingChargeMah: Int?,
     val estimatedFullChargeMah: Int?,
     val thermalHeadroom: Float?,
     val bootCount: Int?,
-    val hasAbnormalExit: Boolean,
+    val hasAbnormalExit: Boolean?,
     val collectedAt: Long,
 )
 
@@ -57,6 +58,7 @@ data class StatUiState(
 class StatScreenViewModel(
     private val collector: DeviceInfoCollector,
     private val repository: DeviceRepository,
+    private val uploader: MeasurementUploader,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(StatUiState())
     val uiState: StateFlow<StatUiState> = _uiState.asStateFlow()
@@ -82,6 +84,8 @@ class StatScreenViewModel(
                 .copy(imei = savedImei)
             _uiState.update { it.copy(spec = spec) }
             repository.saveSpec(spec)
+
+            uploader.uploadSpecIfChanged(spec)
         }
     }
 
@@ -104,6 +108,14 @@ class StatScreenViewModel(
         lastCollectedAt = status.collectedAt
         _uiState.update { it.copy(status = status, isLoading = false) }
         repository.saveStatus(status)
+
+        viewModelScope.launch { uploadStatus(status) }
+    }
+
+    private suspend fun uploadStatus(status: DeviceStatus) {
+        val since = repository.lastStatusSentAtOnce() ?: 0L
+        val abnormal = withContext(Dispatchers.IO) { collector.hasAbnormalExitSince(since) }
+        uploader.uploadStatusIfDue(status.copy(hasAbnormalExit = abnormal))
     }
 
     companion object {
@@ -115,6 +127,7 @@ class StatScreenViewModel(
                 StatScreenViewModel(
                     collector = DeviceInfoCollector(app),
                     repository = DeviceRepository(app),
+                    uploader = MeasurementUploader(app),
                 )
             }
         }
