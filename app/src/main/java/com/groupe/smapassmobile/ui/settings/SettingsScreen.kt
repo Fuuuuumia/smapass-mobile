@@ -1,5 +1,6 @@
 package com.groupe.smapassmobile.ui.settings
 
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.border
@@ -40,8 +41,16 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.groupe.smapassmobile.BuildConfig
 import com.groupe.smapassmobile.data.remote.Visibility
 
-// Web の証明書ページ（/certificates/{端末UUID}）。接続先は gradle.properties の `smapass.webBaseUrl`。
+// Web のページ。接続先は gradle.properties の `smapass.webBaseUrl`。
+/** 証明書ページ（/certificates/{端末UUID}）。 */
 private fun certificateUrl(deviceId: String): String = "${BuildConfig.WEB_BASE_URL}/certificates/$deviceId"
+
+/** 出品用の共有ページ（/certificates/{端末UUID}/share）。メルカリ等に載せる QR 付き画像を作る。 */
+private fun shareUrl(deviceId: String): String = "${certificateUrl(deviceId)}/share"
+
+private fun openInBrowser(context: Context, url: String) {
+    runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
+}
 
 /**
  * Stat 画面の「設定」タブの中身。登録状態・公開設定・計測ログ送信・引き継ぎ画面への導線・
@@ -101,22 +110,27 @@ fun SettingsPane(
             Text("引き継ぎ（端末の移行）")
         }
 
+        // 非公開の端末は Web から参照できない（公開 API が 404 を返す）ので、公開時のみ有効。
+        val canOpenWeb = uiState.deviceId != null && isPublic
+
         OutlinedButton(
-            onClick = {
-                uiState.deviceId?.let { id ->
-                    runCatching {
-                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(certificateUrl(id))))
-                    }
-                }
-            },
-            // 非公開の端末は Web から参照できない（公開 API が 404 を返す）。
-            enabled = uiState.deviceId != null && isPublic,
+            onClick = { uiState.deviceId?.let { openInBrowser(context, certificateUrl(it)) } },
+            enabled = canOpenWeb,
             modifier = Modifier.fillMaxWidth(),
         ) {
             Text("証明書を Web で見る")
         }
+
+        // 証明書の隣に、出品ページ（メルカリ等）に載せる QR 付き画像を作るページへの導線を置く。
+        OutlinedButton(
+            onClick = { uiState.deviceId?.let { openInBrowser(context, shareUrl(it)) } },
+            enabled = canOpenWeb,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text("出品用の QR 画像を作る")
+        }
         if (uiState.isRegistered && !isPublic) {
-            HintText("Web で表示するには「公開」に切り替えてください。")
+            HintText("Web で表示したり出品用の画像を作ったりするには「公開」に切り替えてください。")
         }
 
         BusyAndMessage(isBusy = uiState.isBusy, message = uiState.message)
