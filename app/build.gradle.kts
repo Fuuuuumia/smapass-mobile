@@ -4,6 +4,10 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
+// 接続先はルートの gradle.properties（smapass.*）で一元管理する。
+val apiBaseUrl: String = providers.gradleProperty("smapass.apiBaseUrl").get().trimEnd('/')
+val webBaseUrl: String = providers.gradleProperty("smapass.webBaseUrl").get().trimEnd('/')
+
 android {
     namespace = "com.groupe.smapassmobile"
     compileSdk {
@@ -18,6 +22,11 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField("String", "API_BASE_URL", "\"$apiBaseUrl\"")
+        buildConfigField("String", "WEB_BASE_URL", "\"$webBaseUrl\"")
+        // API が http:// のときだけ平文通信を許可する（https:// なら自動で無効）。
+        manifestPlaceholders["usesCleartextTraffic"] = apiBaseUrl.startsWith("http://").toString()
     }
 
     buildTypes {
@@ -33,6 +42,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -55,6 +65,10 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.ktor.client.core)
+    implementation(libs.ktor.client.okhttp)
+    implementation(libs.ktor.client.content.negotiation)
+    implementation(libs.ktor.serialization.kotlinx.json)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
 }

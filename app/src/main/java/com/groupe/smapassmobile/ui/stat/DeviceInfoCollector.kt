@@ -113,10 +113,12 @@ class DeviceInfoCollector(
         return diagonal to metrics.densityDpi
     }
 
-    private fun collectBatteryTemperature(): Float {
+    /** 取得できない場合は 0℃ と区別するため null を返す。 */
+    private fun collectBatteryTemperature(): Float? {
         val intent = context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
-        val tenthsCelsius = intent?.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0) ?: 0
-        return tenthsCelsius / 10f
+            ?: return null
+        val tenthsCelsius = intent.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, Int.MIN_VALUE)
+        return if (tenthsCelsius == Int.MIN_VALUE) null else tenthsCelsius / 10f
     }
 
     private fun collectBatteryCycleCount(): Int? {
@@ -145,11 +147,12 @@ class DeviceInfoCollector(
     private fun collectBootCount(): Int? =
         runCatching { Settings.Global.getInt(resolver, Settings.Global.BOOT_COUNT) }.getOrNull()
 
-    private fun hasAbnormalExitSince(since: Long): Boolean {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return false
+    /** 判定できない（API 30 未満・取得失敗）ときは「異常なし」と区別するため null を返す。 */
+    fun hasAbnormalExitSince(since: Long): Boolean? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return null
         val reasons = runCatching {
             activityManager.getHistoricalProcessExitReasons(context.packageName, 0, 0)
-        }.getOrNull().orEmpty()
+        }.getOrNull() ?: return null
         return reasons.any { info ->
             info.timestamp > since && info.reason in ABNORMAL_EXIT_REASONS
         }
